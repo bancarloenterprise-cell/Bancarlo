@@ -132,14 +132,6 @@
 
     <div class="top-bar">Bancarlo Cloud Móvil</div>
 
-    <div class="section-title">Tu Cuenta Bancaria Digital</div>
-    <div class="form-container" style="margin-bottom: 20px;">
-        <div class="form-group">
-            <label for="my-email">Tu Correo Electrónico (Mi Cuenta)</label>
-            <input type="email" id="my-email" class="form-input" placeholder="ejemplo@gmail.com" value="carloitzae52@gmail.com" oninput="connectToMyAccount()">
-        </div>
-    </div>
-
     <div style="padding: 0 15px;">
         <div id="live-alert-box" class="status-msg success" style="background-color: #3b82f6; color: white; margin-bottom: 10px; display: none;"></div>
     </div>
@@ -221,10 +213,10 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN DE CORREO
+        // CONFIGURACIÓN DE CORREO (EMAILJS)
         emailjs.init("Srl82h5JL4_eDWXqg");
 
-        // CONFIGURACIÓN DE TU BASE DE DATOS FIREBASE
+        // CONFIGURACIÓN DE LA BASE DE DATOS FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw",
             databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com",
@@ -234,8 +226,9 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        let myAccountEmail = "";
-        let myCleanKey = "";
+        // Cuenta global segura del sistema en segundo plano (Reemplazó por completo tu correo)
+        let myAccountEmail = "bancarlo.default.user@gmail.com";
+        let myCleanKey = "bancarlo_default_user@gmail_com";
         let balances = { debito: 0.00, credito: 2000.00 };
         let selectedCardType = 'debito';
         let isInitialLoad = true;
@@ -245,27 +238,15 @@
             return email.toLowerCase().replace(/\./g, '_');
         }
 
-        function connectToMyAccount() {
-            myAccountEmail = document.getElementById('my-email').value.trim();
-            if(!myAccountEmail || !myAccountEmail.includes('@')) return;
-
-            const newCleanKey = cleanEmailKey(myAccountEmail);
-            if (newCleanKey === myCleanKey) return;
-
-            if (currentRef) {
-                currentRef.off();
-            }
-
-            myCleanKey = newCleanKey;
-            isInitialLoad = true; 
-
+        // CONEXIÓN DEFINITIVA E INMEDIATA AL ABRIR LA APLICACIÓN
+        window.addEventListener('DOMContentLoaded', () => {
             currentRef = database.ref('users/' + myCleanKey);
             currentRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 
                 if (data) {
                     let oldDebito = balances.debito;
-                    balances.debito = data.debito || 0.00;
+                    balances.debito = data.debito !== undefined ? data.debito : 0.00;
                     balances.credito = data.credito !== undefined ? data.credito : 2000.00;
 
                     if (!isInitialLoad && balances.debito > oldDebito) {
@@ -273,16 +254,18 @@
                         showLiveTransferAlert(transferReceived);
                     }
                 } else {
+                    // Si el usuario del sistema no existe en la nube, se crea con sus balances iniciales por defecto
                     balances = { debito: 100.00, credito: 2000.00 };
                     database.ref('users/' + myCleanKey).set(balances);
                 }
 
                 isInitialLoad = false; 
 
+                // Actualiza visualmente las tarjetas en tiempo real sin trabas
                 document.getElementById('balance-debito').innerText = '$' + balances.debito.toLocaleString('es-MX', {minimumFractionDigits: 2});
                 document.getElementById('balance-credito').innerText = '$' + balances.credito.toLocaleString('es-MX', {minimumFractionDigits: 2});
             });
-        }
+        });
 
         function showLiveTransferAlert(amount) {
             const alertBox = document.getElementById('live-alert-box');
@@ -293,9 +276,6 @@
                 alertBox.style.display = 'none';
             }, 7000);
         }
-
-        // Conexión automática inicial al cargar la página
-        connectToMyAccount();
 
         function openAdminModal(type) {
             selectedCardType = type;
@@ -345,8 +325,15 @@
                 newBalance -= amount;
             }
 
-            database.ref('users/' + myCleanKey + '/' + selectedCardType).set(newBalance);
-            closeModal();
+            // Envía de inmediato el saldo modificado a Firebase
+            database.ref('users/' + myCleanKey + '/' + selectedCardType).set(newBalance)
+                .then(() => {
+                    closeModal();
+                })
+                .catch(() => {
+                    modalStatus.className = "status-msg error";
+                    modalStatus.innerText = "❌ Error de conexión al guardar los fondos.";
+                });
         }
 
         document.getElementById('bank-transfer-form').addEventListener('submit', function(e) {
