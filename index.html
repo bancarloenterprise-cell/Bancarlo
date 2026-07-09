@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bancarlo Móvil v5.2</title>
+    <title>Bancarlo Cloud Móvil v5.2</title>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -65,6 +65,26 @@
         }
         .bank-card.active { border-color: #e2cb99; transform: scale(1.02); }
         .card-top { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 13px; letter-spacing: 1px; }
+        
+        /* Círculo con Flecha a la Derecha */
+        .info-trigger-circle {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background-color: #10b981;
+            color: #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .info-trigger-circle:hover {
+            background-color: #059669;
+        }
+
         .chip-contactless { margin-top: 15px; display: flex; flex-direction: column; gap: 4px; }
         .chip { width: 38px; height: 28px; background: linear-gradient(135deg, #e2cb99 0%, #b89855 100%); border-radius: 6px; }
         .contactless { font-size: 16px; margin-left: 4px; }
@@ -116,21 +136,34 @@
         .tx-user { font-size: 14px; font-weight: bold; color: #ffffff; }
         .tx-date { font-size: 11px; color: #64748b; }
         .tx-amount { font-size: 15px; font-weight: bold; color: #10b981; }
+        
+        /* Modales */
         .modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; z-index: 1000; padding: 20px; box-sizing: border-box;
         }
-        .modal-content { background: #111111; padding: 24px; border-radius: 16px; width: 100%; max-width: 360px; border: 2px solid #10b981; }
-        .modal-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; text-align: center; color: #10b981; }
+        .modal-content { background: #111111; padding: 24px; border-radius: 16px; width: 100%; max-width: 360px; border: 2px solid #10b981; position: relative; }
+        .modal-title { font-size: 16px; font-weight: bold; margin-bottom: 15px; text-align: center; color: #10b981; text-transform: uppercase; }
         .modal-buttons { display: flex; gap: 10px; margin-top: 15px; }
         .btn-modal { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .btn-add { background-color: #10b981; color: black; }
         .btn-remove { background-color: #ef4444; color: white; }
         .btn-cancel { background-color: #333333; color: white; width: 100%; margin-top: 10px; }
+        .info-text-line { font-size: 14px; margin-bottom: 8px; color: #cbd5e1; display: flex; justify-content: space-between; }
+        .info-text-line span { font-weight: bold; color: #ffffff; }
+        .statement-box { background: #050505; border: 1px solid #222222; border-radius: 8px; padding: 12px; max-height: 180px; overflow-y: auto; font-size: 13px; }
     </style>
 </head>
 <body>
 
     <div class="top-bar">Bancarlo Cloud Móvil</div>
+
+    <div class="section-title">Tu Cuenta Bancaria Digital</div>
+    <div class="form-container" style="margin-bottom: 20px;">
+        <div class="form-group">
+            <label for="my-email">Tu Correo Electrónico (Mi Cuenta)</label>
+            <input type="email" id="my-email" class="form-input" placeholder="ejemplo@gmail.com" value="mpzamorami@gmail.com" oninput="connectToMyAccount()">
+        </div>
+    </div>
 
     <div style="padding: 0 15px;">
         <div id="live-alert-box" class="status-msg success" style="background-color: #3b82f6; color: white; margin-bottom: 10px; display: none;"></div>
@@ -138,8 +171,11 @@
 
     <div class="section-title">Mis Tarjetas Gold Cloud</div>
     <div class="carousel-container">
-        <div id="card-debito" class="bank-card active" onclick="openAdminModal('debito')">
-            <div class="card-top"><span>GOLD</span><span class="contactless">⚡</span></div>
+        <div id="card-debito" class="bank-card active" onclick="selectCard('debito')">
+            <div class="card-top">
+                <span>GOLD</span>
+                <div class="info-trigger-circle" onclick="openCardInfoModal('debito', event)">➔</div>
+            </div>
             <div class="chip-contactless"><div class="chip"></div></div>
             <div class="card-label">Saldo Débito (En la Nube)</div>
             <div class="card-balance" id="balance-debito">$0.00</div>
@@ -152,8 +188,11 @@
             </div>
         </div>
 
-        <div id="card-credito" class="bank-card" onclick="openAdminModal('credito')">
-            <div class="card-top"><span>GOLD</span><span class="contactless">⚡</span></div>
+        <div id="card-credito" class="bank-card" onclick="selectCard('credito')">
+            <div class="card-top">
+                <span>GOLD</span>
+                <div class="info-trigger-circle" onclick="openCardInfoModal('credito', event)">➔</div>
+            </div>
             <div class="chip-contactless"><div class="chip"></div></div>
             <div class="card-label">Crédito Disponible (Límite: $2,000)</div>
             <div class="card-balance" id="balance-credito">$2,000.00</div>
@@ -165,6 +204,10 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div style="padding: 0 15px; margin-bottom: 15px;">
+        <button class="btn-bank" style="background-color: #334155; color: white; padding: 10px; font-size: 13px;" onclick="openAdminModal()">⚙️ Administrar Fondos Tarjeta Seleccionada</button>
     </div>
 
     <div class="section-title">Operación de Envío en Tiempo Real</div>
@@ -192,6 +235,25 @@
         <div style="text-align: center; color: #64748b; font-size: 13px; padding: 15px;">No se registran envíos en esta sesión.</div>
     </div>
 
+    <div id="card-info-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title" id="info-modal-title">Información de Tarjeta</div>
+            <div id="info-modal-body" style="margin-bottom: 20px;">
+                </div>
+            <button class="btn-bank" id="btn-open-statement" style="font-size: 14px; padding: 12px;">Ver Estado de Cuenta</button>
+            <button class="btn-modal btn-cancel" onclick="closeModal('card-info-modal')">Cerrar</button>
+        </div>
+    </div>
+
+    <div id="card-statement-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title" id="statement-modal-title">Estado de Cuenta</div>
+            <div class="statement-box" id="statement-modal-body">
+                </div>
+            <button class="btn-modal btn-cancel" onclick="closeModal('card-statement-modal')" style="margin-top: 15px;">Regresar</button>
+        </div>
+    </div>
+
     <div id="admin-modal" class="modal">
         <div class="modal-content">
             <div class="modal-title" id="modal-card-title">Gestionar Fondos</div>
@@ -207,16 +269,16 @@
                 <button class="btn-modal btn-add" onclick="modifyFunds('add')">Agregar</button>
                 <button class="btn-modal btn-remove" onclick="modifyFunds('remove')">Quitar</button>
             </div>
-            <button class="btn-modal btn-cancel" onclick="closeModal()">Cancelar</button>
+            <button class="btn-modal btn-cancel" onclick="closeModal('admin-modal')">Cancelar</button>
             <div id="modal-status" class="status-msg"></div>
         </div>
     </div>
 
     <script>
-        // CONFIGURACIÓN DE CORREO (EMAILJS)
+        // CONFIGURACIÓN DE CORREO
         emailjs.init("Srl82h5JL4_eDWXqg");
 
-        // CONFIGURACIÓN DE LA BASE DE DATOS FIREBASE
+        // CONFIGURACIÓN DE TU BASE DE DATOS FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyDNnq2YzWJLi_YfPNqgRY4oCMKOJQjrOGw",
             databaseURL: "https://bancarlo-23297-default-rtdb.firebaseio.com",
@@ -226,46 +288,82 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // Cuenta global segura del sistema en segundo plano (Reemplazó por completo tu correo)
-        let myAccountEmail = "bancarlo.default.user@gmail.com";
-        let myCleanKey = "bancarlo_default_user@gmail_com";
+        let myAccountEmail = "";
+        let myCleanKey = "";
         let balances = { debito: 0.00, credito: 2000.00 };
         let selectedCardType = 'debito';
         let isInitialLoad = true;
         let currentRef = null; 
 
+        // Información estática para los círculos de información
+        const cardDetailsData = {
+            debito: {
+                numero: "**** **** **** 4829",
+                vencimiento: "12/30",
+                cvv: "395",
+                tipo: "Cloud Débito Internacional",
+                titular: "Carlo Itzae"
+            },
+            credito: {
+                numero: "**** **** **** 8841",
+                vencimiento: "06/29",
+                cvv: "142",
+                tipo: "Cloud Crédito Gold Oro",
+                titular: "Carlo Itzae"
+            }
+        };
+
         function cleanEmailKey(email) {
             return email.toLowerCase().replace(/\./g, '_');
         }
 
-        // CONEXIÓN DEFINITIVA E INMEDIATA AL ABRIR LA APLICACIÓN
-        window.addEventListener('DOMContentLoaded', () => {
+        function selectCard(type) {
+            selectedCardType = type;
+            document.querySelectorAll('.bank-card').forEach(card => card.classList.remove('active'));
+            document.getElementById(`card-${type}`).classList.add('active');
+        }
+
+        // Conexión en tiempo real instantánea al escribir/cambiar correo
+        function connectToMyAccount() {
+            myAccountEmail = document.getElementById('my-email').value.trim();
+            if(!myAccountEmail || !myAccountEmail.includes('@')) return;
+
+            const newCleanKey = cleanEmailKey(myAccountEmail);
+            if (newCleanKey === myCleanKey) return;
+
+            if (currentRef) {
+                currentRef.off(); // Apagar escucha anterior
+            }
+
+            myCleanKey = newCleanKey;
+            isInitialLoad = true; 
+
             currentRef = database.ref('users/' + myCleanKey);
             currentRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 
                 if (data) {
                     let oldDebito = balances.debito;
-                    balances.debito = data.debito !== undefined ? data.debito : 0.00;
-                    balances.credito = data.credito !== undefined ? data.credito : 2000.00;
+                    balances.debito = data.debito !== undefined ? parseFloat(data.debito) : 0.00;
+                    balances.credito = data.credito !== undefined ? parseFloat(data.credito) : 2000.00;
 
                     if (!isInitialLoad && balances.debito > oldDebito) {
                         let transferReceived = balances.debito - oldDebito;
                         showLiveTransferAlert(transferReceived);
                     }
                 } else {
-                    // Si el usuario del sistema no existe en la nube, se crea con sus balances iniciales por defecto
+                    // Crear cuenta por defecto si no existe
                     balances = { debito: 100.00, credito: 2000.00 };
                     database.ref('users/' + myCleanKey).set(balances);
                 }
 
                 isInitialLoad = false; 
 
-                // Actualiza visualmente las tarjetas en tiempo real sin trabas
+                // Actualizar de inmediato los textos de las tarjetas en la pantalla principal
                 document.getElementById('balance-debito').innerText = '$' + balances.debito.toLocaleString('es-MX', {minimumFractionDigits: 2});
                 document.getElementById('balance-credito').innerText = '$' + balances.credito.toLocaleString('es-MX', {minimumFractionDigits: 2});
             });
-        });
+        }
 
         function showLiveTransferAlert(amount) {
             const alertBox = document.getElementById('live-alert-box');
@@ -277,21 +375,76 @@
             }, 7000);
         }
 
-        function openAdminModal(type) {
-            selectedCardType = type;
-            document.querySelectorAll('.bank-card').forEach(card => card.classList.remove('active'));
-            document.getElementById(`card-${type}`).classList.add('active');
-            document.getElementById('modal-card-title').innerText = `Ajustar Saldo Cloud: ${type.toUpperCase()}`;
+        // Inicialización automática al cargar
+        connectToMyAccount();
+
+        // Ventana de Información de Tarjetas
+        function openCardInfoModal(type, event) {
+            if(event) event.stopPropagation(); // Evita heredar clicks de la tarjeta de atrás
+            
+            const info = cardDetailsData[type];
+            document.getElementById('info-modal-title').innerText = `Detalles: ${type.toUpperCase()}`;
+            
+            let htmlInfo = `
+                <div class="info-text-line">Titular: <span>${info.titular}</span></div>
+                <div class="info-text-line">Número: <span>${info.numero}</span></div>
+                <div class="info-text-line">Vence: <span>${info.vencimiento}</span></div>
+                <div class="info-text-line">CVV: <span>***</span></div>
+                <div class="info-text-line">Categoría: <span>${info.tipo}</span></div>
+                <div class="info-text-line">Saldo Actual: <span>$${balances[type].toFixed(2)}</span></div>
+            `;
+            
+            document.getElementById('info-modal-body').innerHTML = htmlInfo;
+            
+            // Configurar botón para abrir la segunda ventana flotante
+            document.getElementById('btn-open-statement').onclick = function() {
+                openCardStatementModal(type);
+            };
+
+            document.getElementById('card-info-modal').style.display = 'flex';
+        }
+
+        // Segunda ventana flotante: Estado de Cuenta arriba + 1 botón abajo
+        function openCardStatementModal(type) {
+            document.getElementById('statement-modal-title').innerText = `Estado de Cuenta (${type.toUpperCase()})`;
+            
+            // Simular o leer movimientos de la cuenta
+            let htmlStatement = `
+                <div style="color:#10b981; font-weight:bold; margin-bottom:10px; text-align:center;">
+                    Balance Contable: $${balances[type].toFixed(2)} MXN
+                </div>
+                <hr style="border-color:#222; margin:10px 0;">
+                <div style="display:flex; justify-content:space-between; padding:5px 0; color:#888;">
+                    <span>Concepto</span><span>Monto</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:5px 0;">
+                    <span>Apertura de Cuenta Cloud</span><span style="color:#10b981;">+ $${type === 'debito' ? '100.00' : '2000.00'}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; padding:5px 0;">
+                    <span>Sincronización de Saldo</span><span style="color:#10b981;">Al Instante</span>
+                </div>
+            `;
+            
+            document.getElementById('statement-modal-body').innerHTML = htmlStatement;
+            document.getElementById('card-statement-modal').style.display = 'flex';
+        }
+
+        // Abrir Modal de Administración para la tarjeta activa
+        function openAdminModal() {
+            document.getElementById('modal-card-title').innerText = `Ajustar Fondos Cloud: ${selectedCardType.toUpperCase()}`;
             document.getElementById('admin-modal').style.display = 'flex';
             document.getElementById('modal-status').style.display = 'none';
         }
 
-        function closeModal() {
-            document.getElementById('admin-modal').style.display = 'none';
-            document.getElementById('modal-amount').value = '';
-            document.getElementById('modal-password').value = '';
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+            if(id === 'admin-modal') {
+                document.getElementById('modal-amount').value = '';
+                document.getElementById('modal-password').value = '';
+            }
         }
 
+        // Lógica de Modificación de Fondos corregida (Agrega y Quita correctamente reflejando en Firebase)
         function modifyFunds(operation) {
             const amount = parseFloat(document.getElementById('modal-amount').value);
             const password = document.getElementById('modal-password').value;
@@ -319,23 +472,23 @@
             } else {
                 if (amount > balances[selectedCardType]) {
                     modalStatus.className = "status-msg error";
-                    modalStatus.innerText = "❌ Fondos insuficientes.";
+                    modalStatus.innerText = "❌ Fondos insuficientes en la tarjeta.";
                     return;
                 }
                 newBalance -= amount;
             }
 
-            // Envía de inmediato el saldo modificado a Firebase
+            // Actualizar Firebase (el listener de arriba se encargará de cambiar las tarjetas al instante)
             database.ref('users/' + myCleanKey + '/' + selectedCardType).set(newBalance)
-                .then(() => {
-                    closeModal();
-                })
-                .catch(() => {
-                    modalStatus.className = "status-msg error";
-                    modalStatus.innerText = "❌ Error de conexión al guardar los fondos.";
-                });
+            .then(() => {
+                closeModal('admin-modal');
+            }).catch(err => {
+                modalStatus.className = "status-msg error";
+                modalStatus.innerText = "❌ Error en Firebase.";
+            });
         }
 
+        // Manejo de Envíos y Notificación por Correo Electrónico
         document.getElementById('bank-transfer-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const destEmail = document.getElementById('dest-email').value.trim();
@@ -382,8 +535,17 @@
                 }
 
                 database.ref().update(updates).then(() => {
-                    const templateParams = { to_email: destEmail, amount_sent: amount.toFixed(2), card_used: selectedCardType.toUpperCase() };
-                    emailjs.send('service_z4nvp7l', 'template_04odl0v', templateParams);
+                    // Envío automático usando EmailJS
+                    const templateParams = { 
+                        to_email: destEmail, 
+                        from_email: myAccountEmail,
+                        amount_sent: amount.toFixed(2), 
+                        card_used: selectedCardType.toUpperCase() 
+                    };
+                    
+                    emailjs.send('service_z4nvp7l', 'template_04odl0v', templateParams)
+                    .then(() => console.log("Correo enviado con éxito"))
+                    .catch(err => console.error("Fallo al enviar correo por EmailJS:", err));
 
                     const now = new Date();
                     const formattedDate = now.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
